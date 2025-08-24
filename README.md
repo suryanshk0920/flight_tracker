@@ -18,13 +18,6 @@ A simple web application to track **real-time flight arrivals and departures** a
 
 ---
 
-## Demo
-
-*(Add a screenshot of your website here)*  
-`![Demo Screenshot](screenshot.png)`
-
----
-
 ## Technologies Used
 
 - Frontend: HTML, CSS, JavaScript
