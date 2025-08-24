@@ -1,0 +1,10 @@
+/* Force light mode even if system prefers dark */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    background-color: rgb(92, 80, 80);
+    color: rgb(0, 0, 0);
+  }
+}

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Flight Tracker</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #1a73e8;
+      font-size: 2em;
+    }
+
+    label {
+      display: inline-block;
+      margin: 10px 5px 10px 0;
+      font-weight: 500;
+    }
+
+    input, select, button {
+      padding: 8px 12px;
+      margin: 5px 0 15px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1em;
+      transition: all 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: #1a73e8;
+      outline: none;
+      box-shadow: 0 0 5px rgba(26, 115, 232, 0.3);
+    }
+
+    button {
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background-color: #1666c1;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: center;
+    }
+
+    thead {
+      background-color: #1a73e8;
+      color: white;
+    }
+
+    tbody tr {
+      background-color: #fff;
+      transition: background 0.2s;
+    }
+
+    tbody tr:hover {
+      background-color: #e8f0fe;
+    }
+
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      thead tr {
+        display: none;
+      }
+      tbody tr {
+        margin-bottom: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        padding: 10px;
+      }
+      td {
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+      }
+      td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 15px;
+        width: calc(50% - 30px);
+        text-align: left;
+        font-weight: 600;
+        color: #555;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Flight Tracker</h1>
+
+  <div>
+    <label>City: <input id="city" placeholder="Enter city" oninput="searchAirports()"></label><br
+    <label>Airport: <select id="airportSelect"></select></label>
+    <label>Date: <input type="date" id="flightDate"></label>
+    <label>Type: 
+      <select id="type">
+        <option value="arrival">Arrival</option>
+        <option value="departure">Departure</option>
+      </select>
+    </label>
+    <button onclick="fetchFlights()">Get Flights</button>
+  </div>
+
+  <table id="flightsTable">
+    <thead>
+      <tr>
+        <th>Flight Number</th>
+        <th>Departure</th>
+        <th>Arrival</th>
+        <th>Scheduled</th>
+        <th>Estimated</th>
+        <th>Actual</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function searchAirports() {
+      const city = document.getElementById('city').value;
+      if (city.length < 2) return;
+
+      const res = await fetch(`/api/airports?city=${city}`);
+      const airports = await res.json();
+
+      const select = document.getElementById('airportSelect');
+      select.innerHTML = '';
+      airports.forEach(a => {
+        const option = document.createElement('option');
+        option.value = a.icao;
+        option.text = `${a.name} (${a.icao})`;
+        select.appendChild(option);
+      });
+    }
+
+    function formatTime(dep, arr) {
+      const depTime = dep ? new Date(dep).toLocaleString() : 'N/A';
+      const arrTime = arr ? new Date(arr).toLocaleString() : 'N/A';
+      return `${depTime} → ${arrTime}`;
+    }
+
+    async function fetchFlights() {
+      const airport = document.getElementById('airportSelect').value;
+      const type = document.getElementById('type').value;
+      const date = document.getElementById('flightDate').value; // YYYY-MM-DD
+
+      if (!airport) { alert("Please select an airport."); return; }
+
+      const tbody = document.querySelector('#flightsTable tbody');
+      tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+
+      try {
+        const urlParams = new URLSearchParams({ airport, type });
+        if (date) urlParams.append('flight_date', date);
+
+        const res = await fetch(`/api/flights?${urlParams.toString()}`);
+        const flights = await res.json();
+
+        if (!Array.isArray(flights) || flights.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7">No flights found.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        flights.forEach(f => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td data-label="Flight Number">${f.flight?.iata || f.flight?.icao || 'N/A'}</td>
+            <td data-label="Departure">${f.departure?.airport || 'N/A'}</td>
+            <td data-label="Arrival">${f.arrival?.airport || 'N/A'}</td>
+            <td data-label="Scheduled">${formatTime(f.departure?.scheduled, f.arrival?.scheduled)}</td>
+            <td data-label="Estimated">${formatTime(f.departure?.estimated, f.arrival?.estimated)}</td>
+            <td data-label="Actual">${formatTime(f.departure?.actual, f.arrival?.actual)}</td>
+            <td data-label="Status">${f.flight_status || 'N/A'}</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+      } catch (err) {
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="7">Error fetching flight data.</td></tr>';
+      }
+    }
+  </script>
+</body>
+</html>
